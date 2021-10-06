@@ -9,7 +9,11 @@ PROJECT := $(strip $(PROJECT))
 C_SRC_DIR ?= $(CURDIR)
 C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 C_SRC_OUTPUT ?= $(CURDIR)/../priv/$(PROJECT)
+ifeq (,$(STATIC_ERLANG_NIF))
 C_SRC_TYPE ?= shared
+else
+C_SRC_TYPE ?= static
+endif
 
 OTP_VERSION = $(shell erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().')
 # System type and C compiler/flags.
@@ -45,16 +49,23 @@ endif
 ifeq ($(PLATFORM),msys2)
 	C_SRC_OUTPUT_EXECUTABLE_EXTENSION ?= .exe
 	C_SRC_OUTPUT_SHARED_EXTENSION ?= .dll
+	C_SRC_OUTPUT_STATIC_EXTENSION ?= .lib
 else
 	C_SRC_OUTPUT_EXECUTABLE_EXTENSION ?=
 	C_SRC_OUTPUT_SHARED_EXTENSION ?= .so
+	C_SRC_OUTPUT_STATIC_EXTENSION ?= .a
 endif
 
 ifeq ($(C_SRC_TYPE),shared)
 	C_SRC_OUTPUT_FILE = $(C_SRC_OUTPUT)$(C_SRC_OUTPUT_SHARED_EXTENSION)
+else ifeq ($(C_SRC_TYPE),static)
+	C_SRC_OUTPUT_FILE = $(C_SRC_OUTPUT)$(C_SRC_OUTPUT_STATIC_EXTENSION)
 else
 	C_SRC_OUTPUT_FILE = $(C_SRC_OUTPUT)$(C_SRC_OUTPUT_EXECUTABLE_EXTENSION)
 endif
+
+RANLIB ?= ranlib
+ARFLAGS ?= cr
 
 ifeq ($(PLATFORM),msys2)
 # We hardcode the compiler used on MSYS2. The default CC=cc does
@@ -85,6 +96,11 @@ endif
 ifneq ($(PLATFORM),msys2)
 	CFLAGS += -fPIC
 	CXXFLAGS += -fPIC
+endif
+
+ifneq (,$(STATIC_ERLANG_NIF))
+	CFLAGS += -DSTATIC_ERLANG_NIF=1
+	CXXFLAGS += -DSTATIC_ERLANG_NIF=1
 endif
 
 CFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)"
@@ -122,6 +138,12 @@ gen_verbose = $(gen_verbose_$(V))
 link_verbose_0 = @echo " LD    " $(@F);
 link_verbose = $(link_verbose_$(V))
 
+ar_verbose_0 = @echo " AR    " $(@F);
+ar_verbose = $(ar_verbose_$(V))
+
+ranlib_verbose_0 = @echo " RANLIB" $(@F);
+ranlib_verbose = $(ranlib_verbose_$(V))
+
 # Targets.
 
 core_find = $(if $(wildcard $1),$(shell find $(1:%/=%) -type f -name $(subst *,\*,$2)))
@@ -142,11 +164,18 @@ deps::
 
 test-build:: $(C_SRC_OUTPUT_FILE)
 
+ifneq (static,$(C_SRC_TYPE))
 $(C_SRC_OUTPUT_FILE): $(OBJECTS)
 	$(verbose) mkdir -p $(BASEDIR)/priv/
 	$(link_verbose) $(CC) $(OBJECTS) \
 		$(LDFLAGS) $(if $(filter $(C_SRC_TYPE),shared),-shared) $(LDLIBS) \
 		-o $(C_SRC_OUTPUT_FILE)
+else
+$(C_SRC_OUTPUT_FILE): $(OBJECTS)
+	$(verbose) mkdir -p $(BASEDIR)/priv/
+	$(ar_verbose) $(AR) $(ARFLAGS) $(C_SRC_OUTPUT_FILE) $(OBJECTS)
+	$(ranlib_verbose) $(RANLIB) $(C_SRC_OUTPUT_FILE)
+endif
 
 %.o: %.c
 	$(COMPILE_C) $(OUTPUT_OPTION) $<
