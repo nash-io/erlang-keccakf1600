@@ -15,7 +15,7 @@ else
 C_SRC_TYPE ?= static
 endif
 
-OTP_VERSION = $(shell erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().')
+OTP_VERSION = $(shell erl -noinput -eval 'erlang:display(erlang:system_info(otp_release)), halt().')
 # System type and C compiler/flags.
 
 ifeq ($(PLATFORM),)
