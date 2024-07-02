@@ -13,5 +13,5 @@
 	{modules, []},
 	{licenses, ["Mozilla Public License Version 2.0"]},
 	{files, ["LICENSE", "Makefile", "erlang.mk", "README.md", "c_src/{Makefile,*.c,*.h}", "src", "rebar.config", "rebar.lock"]},
-	{links, [{"Github", "https://github.com/nash-io/erlang-keccakf1600"}, {"Github", "https://github.com/diodechain/erlang-keccakf1600"}, {"Forked from", "https://github.com/hayesgm/erlang-keccakf1600"}]}
+	{links, [{"Github", "https://github.com/nash-io/erlang-keccakf1600"}, {"Forked from", "https://github.com/diodechain/erlang-keccakf1600"}]}
 ]}.
